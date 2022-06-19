@@ -152,14 +152,14 @@ router.delete("/deleteUser", async (req, res)=>{
 router.put("/updateUser", fetchUser, async (req, res)=>{
     let updatedUser = {};
     try{
-        let { name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, currentPassword, about } = req.body;
+        let { name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, currentPassword, about, contact } = req.body;
         if(!currentPassword){
             return res.status(400).json({ success: false, message: "Incorrect current password" })
             // currentPassword = "";
         }
         // Array of destructured details
-        const detailsArr = [name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, about];
-        const detailsVarArr = ['name', 'password', 'institution', 'yearOfGraduation', 'displayPicture', 'contactNumber', 'gender', 'city', 'about'];
+        const detailsArr = [name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, about, contact];
+        const detailsVarArr = ['name', 'password', 'institution', 'yearOfGraduation', 'displayPicture', 'contactNumber', 'gender', 'city', 'about', 'contact'];
         
         for (let i = 0; i < detailsArr.length; i++) {   
             if (detailsArr[i]){
@@ -206,9 +206,9 @@ router.put("/updateUser", fetchUser, async (req, res)=>{
 
 // Route 5: /getUser - to get info about user, Login required
 
-router.get("/getUser", fetchUser, async (req, res) => {
+router.get("/getUser/:id", fetchUser, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.params.id;
         let user = await User.findById(userId).select("-password -__v");
         if (!user) {
             // Not found

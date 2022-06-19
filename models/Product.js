@@ -36,9 +36,9 @@ const productSchema = new Schema({
     },
     availability: {
         type: String,
-        required: true
+        default: "available"
     },
-    quantity:{
+    quantity: {
         type: Number,
         default : 1
     },
@@ -46,11 +46,14 @@ const productSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "user"
     },
-    reportsCount:{
+    reportsCount: {
         type: Number,
         default: 0
     },
-    reports:{
+    reports: {
+        type: Array
+    },
+    reportedBy: {
         type: Array
     }
 })

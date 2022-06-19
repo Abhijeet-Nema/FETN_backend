@@ -42,6 +42,9 @@ const userSchema = new Schema({
     },
     about: {
         type: String
+    },
+    contact: {
+        type: Number
     }
 })
 

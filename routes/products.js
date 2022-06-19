@@ -156,29 +156,67 @@ router.get("/getProductsBySeller/:id", async (req, res)=>{
     }
 })
 
-// Route : 6 -Report a product /reportProduct (Login required)
-router.post("/reportProduct/:id", fetchUser, async (req, res)=>{
+// Route : 7 - Report a product /reportProduct (Login required)
+router.post("/reportProduct/:id", [
+    body('report', "Report description must be 8 characters long").isLength({ min: 8 }),
+], fetchUser, async (req, res)=>{
     try {
+        let updatedProduct = {};
+        let availability = "available" 
+
+        // arrays of errors
+        const errors = validationResult(req);
+
+        // checking whether getting any error if yes then return
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: errors.array()[0] });
+        }
+
         const productId = req.params.id;
         let product = await Product.findById(productId);
         if (!product) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
-        let availability = "available" 
-        if (Number(product.reportsCount) + 1 > 10){
-            availability = "blacklisted"
-        }
+
+        let message = "Product reported successfully";
         // console.log((product.reportsCount));
-        let updatedProduct = {
-            availability : availability,
-            reportsCount: Number(product.reportsCount) + 1,
-            reports : product.reports.concat(req.body.report)
+
+        // If already reported, remove the report
+        if(product.reportedBy.includes(req.user.id)){
+            if (Number(product.reportsCount) - 1 <= 10) {
+                availability = "available"
+            }
+            let ind = product.reportedBy.indexOf(req.user.id);
+            product.reports.splice(ind, 1)
+            product.reportedBy.splice(ind, 1)
+
+            updatedProduct = {
+                availability: availability,
+                reportsCount: Number(product.reportsCount) - 1,
+                reports: product.reports,
+                reportedBy: product.reportedBy
+            }
+            message = "Report has been taken down";
+            console.log(updatedProduct);
+        }
+        // else include it
+        else {
+            if (Number(product.reportsCount) + 1 > 10) {
+                availability = "blacklisted"
+            }
+            updatedProduct = {
+                availability: availability,
+                reportsCount: Number(product.reportsCount) + 1,
+                reports: product.reports.concat(req.body.report),
+                reportedBy: product.reportedBy.concat(req.user.id)
+            }
+            message = "Product reported successfully";
         }
 
         // Updating the product
         updatedProduct = await Product.findByIdAndUpdate(productId, { $set: updatedProduct }, { new: true });
 
-        res.status(200).json({ success: true, message: "Product editied successfully", updatedProduct });
+        res.status(200).json({ success: true, message, updatedProduct });
     }
     catch (err) {
         // catching the error message if any occurred
