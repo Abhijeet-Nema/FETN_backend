@@ -1,4 +1,5 @@
-const express, { Schema } = require("express");
+const mongoose = require("mongoose")
+const { Schema } = require("mongoose");
 const productSchema = new Schema({
     name: {
         type: String
@@ -16,18 +17,24 @@ const productSchema = new Schema({
         default: Date.now
     },
     productImages: {
-        type: String,
+        type: Array,
         required: true
     },
     category: {
         type: String,
         required: true
     },
+    tags:{
+        type: Array
+    },
     course: {
+        type: String
+    },
+    description: {
         type: String,
         required: true
     },
-    description: {
+    availability: {
         type: String,
         required: true
     },
@@ -38,6 +45,13 @@ const productSchema = new Schema({
     seller: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user"
+    },
+    reportsCount:{
+        type: Number,
+        default: 0
+    },
+    reports:{
+        type: Array
     }
 })
 

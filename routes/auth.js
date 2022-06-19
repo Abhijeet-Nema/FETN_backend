@@ -10,9 +10,9 @@ const fetchUser = require('../middlewares/fetchUser');
 const JWT_TOKEN = "MTAwMDExMCAxMDAwMTAxIDEwMTAxMDAgMTAwMTExMCAxMDAwMDAgMTExMDAxMSAxMTAxMDAxIDExMDAxMTEgMTEwMTExMCAxMTAwMDAxIDExMTAxMDAgMTExMDEwMSAxMTEwMDEwIDExMDAxMDEgMTAwMDAwIDExMDEwMTEgMTEwMDEwMSAxMTExMDAx";
 
 // Routes for /auth
-router.get("/",(req, res)=>{
-    res.send("Auth json")
-})
+// router.get("/",(req, res)=>{
+//     res.send("Auth json")
+// })
 
 // Route 1 : Creating a user /auth/signup
 router.post("/signup", [
@@ -152,14 +152,14 @@ router.delete("/deleteUser", async (req, res)=>{
 router.put("/updateUser", fetchUser, async (req, res)=>{
     let updatedUser = {};
     try{
-        let { name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, currentPassword } = req.body;
+        let { name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, currentPassword, about } = req.body;
         if(!currentPassword){
             return res.status(400).json({ success: false, message: "Incorrect current password" })
             // currentPassword = "";
         }
         // Array of destructured details
-        const detailsArr = [name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city];
-        const detailsVarArr = ['name', 'password', 'institution', 'yearOfGraduation', 'displayPicture', 'contactNumber', 'gender', 'city'];
+        const detailsArr = [name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, about];
+        const detailsVarArr = ['name', 'password', 'institution', 'yearOfGraduation', 'displayPicture', 'contactNumber', 'gender', 'city', 'about'];
         
         for (let i = 0; i < detailsArr.length; i++) {   
             if (detailsArr[i]){
@@ -209,12 +209,29 @@ router.put("/updateUser", fetchUser, async (req, res)=>{
 router.get("/getUser", fetchUser, async (req, res) => {
     try {
         const userId = req.user.id;
-        let user = await User.findById(userId).select("-password");
+        let user = await User.findById(userId).select("-password -__v");
         if (!user) {
             // Not found
             return res.status(404).json({ success: false, message: "No such user exists" })
         }
         res.json(user);
+    } catch (err) {
+        // catching the error message if any occurred
+        res.status(400).json({ error: err.message });
+    }
+})
+
+// Route 6: /getUsersList - to get info about user, Login required
+
+router.get("/getUsersList", fetchUser, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        let users = await User.find().select("-password -date -__v");
+        if (!users) {
+            // Not found
+            return res.status(404).json({ success: false, message: "No users's list found" })
+        }
+        res.json(users);
     } catch (err) {
         // catching the error message if any occurred
         res.status(400).json({ error: err.message });
