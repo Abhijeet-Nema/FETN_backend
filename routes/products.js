@@ -1,6 +1,7 @@
 const express = require("express")
 const router = express.Router();
 const Product = require("../models/Product");
+const User = require("../models/User");
 const fetchUser = require("../middlewares/fetchUser")
 const { body, validationResult } = require('express-validator');
 const { findById } = require("../models/Product");
@@ -28,10 +29,12 @@ router.post("/listProduct", fetchUser, [
         return res.status(400).json({ success: false, message: errors.array()[0] });
     }
 
+    let user = await User.findById(req.user.id);
+
     try{
         let product = await Product.create({
             name: req.body.name,
-            acutalPrice: req.body.acutalPrice,
+            actualPrice: req.body.actualPrice,
             sellingPrice: req.body.sellingPrice,
             productImages: req.body.productImages,
             category: req.body.category,
@@ -40,7 +43,8 @@ router.post("/listProduct", fetchUser, [
             description: req.body.description,
             availability: req.body.availability,
             quantity: req.body.quantity,
-            seller: req.user.id
+            seller: req.user.id,
+            takeAwayPlace : user.institution
         })
         res.json({success: true, product});
     }
@@ -83,11 +87,11 @@ router.put("/editProduct/:id", fetchUser, async(req, res)=>{
         }
 
         let updatedProduct = {};
-        let { name, acutalPrice, sellingPrice, productImages, category, tags, course, description, availability, quantity, reportsCount, reports} = req.body;
+        let { name, actualPrice, sellingPrice, productImages, category, tags, course, description, availability, quantity, reportsCount, reports} = req.body;
 
-        const detailsArr = [name, acutalPrice, sellingPrice, productImages, category, tags, course, description, availability, quantity, reportsCount, reports];
+        const detailsArr = [name, actualPrice, sellingPrice, productImages, category, tags, course, description, availability, quantity, reportsCount, reports];
 
-        const detailsVarArr = ['name', 'acutalPrice', 'sellingPrice', 'productImages', 'category', 'tags', 'course', 'description', 'availability', 'quantity', 'reportsCount', 'reports']
+        const detailsVarArr = ['name', 'actualPrice', 'sellingPrice', 'productImages', 'category', 'tags', 'course', 'description', 'availability', 'quantity', 'reportsCount', 'reports']
 
         for (let i = 0; i < detailsArr.length; i++) {
             if (detailsArr[i]) {
@@ -156,9 +160,25 @@ router.get("/getProductsBySeller/:id", async (req, res)=>{
     }
 })
 
-// Route : 7 - Report a product /reportProduct (Login required)
+// Route : 7 - Get all products related to a institution /getProductsByInstitution (No login required)
+router.get("/getProductsByInstitution/:name", async (req, res)=>{
+    try {
+        const InstitutionName = req.params.name;
+        let products = await Product.find({ takeAwayPlace: InstitutionName});
+        if (!products) {
+            return res.status(404).json({ success: false, message: "No such product found" })
+        }
+        res.status(200).json({ success: true, products });
+    }
+    catch (err) {
+        // catching the error message if any occurred
+        res.status(400).json({ success: false, message: err.message });
+    }
+})
+
+// Route : 8 - Report a product /reportProduct (Login required)
 router.post("/reportProduct/:id", [
-    body('report', "Report description must be 8 characters long").isLength({ min: 8 }),
+    body('report', "Report description must be 4 characters long").isLength({ min: 4 }),
 ], fetchUser, async (req, res)=>{
     try {
         let updatedProduct = {};

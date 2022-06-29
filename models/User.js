@@ -45,6 +45,9 @@ const userSchema = new Schema({
     },
     contact: {
         type: Number
+    },
+    wishlist: {
+        type: Array
     }
 })
 

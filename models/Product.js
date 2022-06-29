@@ -4,7 +4,7 @@ const productSchema = new Schema({
     name: {
         type: String
     },
-    acutalPrice: {
+    actualPrice: {
         type: Number,
         required: true
     },
@@ -28,6 +28,9 @@ const productSchema = new Schema({
         type: Array
     },
     course: {
+        type: String
+    },
+    takeAwayPlace: {
         type: String
     },
     description: {
