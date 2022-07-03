@@ -1,4 +1,5 @@
 const express = require("express")
+const fs = require("fs")
 const router = express.Router();
 const Product = require("../models/Product");
 const User = require("../models/User");
@@ -16,10 +17,10 @@ const { findById } = require("../models/Product");
 router.post("/listProduct", fetchUser, [
     // validation checks
     body('name', "Name of product must be of atleast 3 characters long").isLength({ min: 3 }),
-    body('sellingPrice', "Selling price must be defined").isLength({min: 1}),
+    body('sellingPrice', "Selling price must be defined").isLength({ min: 1 }),
     body('productImages', "Product images must be uploaded").isLength({ min: 1 }),
-    body('description', "Desciption must be 10 characters long").isLength({min: 10})
-] ,async (req, res)=>{
+    body('description', "Desciption must be 10 characters long").isLength({ min: 10 })
+], async (req, res) => {
 
     // arrays of errors
     const errors = validationResult(req);
@@ -31,12 +32,18 @@ router.post("/listProduct", fetchUser, [
 
     let user = await User.findById(req.user.id);
 
-    try{
+    if (!user) {
+        // Not found
+        return res.status(401).json({ success: false, message: "Needs authentictaion" })
+    }
+
+    try {
         let product = await Product.create({
             name: req.body.name,
             actualPrice: req.body.actualPrice,
             sellingPrice: req.body.sellingPrice,
-            productImages: req.body.productImages,
+            discount: Math.round((req.body.actualPrice - req.body.sellingPrice) * 100 / req.body.actualPrice),
+            // productImages: req.body.productImages,
             category: req.body.category,
             tags: req.body.tags,
             course: req.body.course,
@@ -44,29 +51,52 @@ router.post("/listProduct", fetchUser, [
             availability: req.body.availability,
             quantity: req.body.quantity,
             seller: req.user.id,
-            takeAwayPlace : user.institution
+            takeAwayPlace: user.institution
         })
-        res.json({success: true, product});
+
+        let newArr = req.body.productImages;
+        newArr.forEach((element, i) => {
+            blob = element.replace(/^data:image\/png;base64,/, '');
+
+            const isExists = fs.existsSync(`../fetn/public/Images/products/${product._id}`)
+            // console.log(isExists);
+            if (!isExists) {
+                fs.mkdirSync(`../fetn/public/Images/products/${product._id}`)
+            }
+
+            fs.writeFile(`../fetn/public/Images/products/${product._id}/view_${i+1}.png`, blob, "base64", (err)=>{
+                if(err){
+                    console.log(err);
+                }
+            })
+            newArr[i] = `${product._id}/view_${i+1}.png`
+        })
+        
+        let updatedProduct = { productImages : newArr }
+        product = await Product.findByIdAndUpdate(product._id, { $set: updatedProduct }, { new: true });
+        res.json({ success: true, product });
     }
-    catch (err){
+    catch (err) {
         // catching the error message if any occurred
-        res.status(400).json({ success: false, message: err.message });
+        return res.status(400).json({ success: false, message: err.message });
     }
+
+    ;
 })
 
 // Route : 2 - Deleting a product /deleteProduct   (Login required)
-router.delete("/deleteProduct/:id", fetchUser, async(req, res)=>{
+router.delete("/deleteProduct/:id", fetchUser, async (req, res) => {
     const productId = req.params.id;
-    try{
+    try {
         let product = await Product.findById(productId);
-        if(!product){
-           return res.status(404).json({success: false, message: "No such product found"})
+        if (!product) {
+            return res.status(404).json({ success: false, message: "No such product found" })
         }
-        if(product.seller.toString() !== req.user.id){
-            return res.status(401).json({success: false, message: "Not permitted to perform this action"});
+        if (product.seller.toString() !== req.user.id) {
+            return res.status(401).json({ success: false, message: "Not permitted to perform this action" });
         }
         product = await Product.findByIdAndDelete(productId);
-        res.status(200).json({success: true, message: "Product delisted successfully", product});
+        res.status(200).json({ success: true, message: "Product delisted successfully", product });
     }
     catch (err) {
         // catching the error message if any occurred
@@ -75,23 +105,23 @@ router.delete("/deleteProduct/:id", fetchUser, async(req, res)=>{
 })
 
 // Route : 3 - Editing a product /editProduct   (Login required)
-router.put("/editProduct/:id", fetchUser, async(req, res)=>{
+router.put("/editProduct/:id", fetchUser, async (req, res) => {
     const productId = req.params.id;
-    try{
+    try {
         let product = await Product.findById(productId);
-        if(!product){
-           return res.status(404).json({success: false, message: "No such product found"})
+        if (!product) {
+            return res.status(404).json({ success: false, message: "No such product found" })
         }
-        if(product.seller.toString() !== req.user.id){
-            return res.status(401).json({success: false, message: "Not permitted to perform this action"});
+        if (product.seller.toString() !== req.user.id) {
+            return res.status(401).json({ success: false, message: "Not permitted to perform this action" });
         }
 
         let updatedProduct = {};
-        let { name, actualPrice, sellingPrice, productImages, category, tags, course, description, availability, quantity, reportsCount, reports} = req.body;
+        let { name, actualPrice, sellingPrice, discount, productImages, category, tags, course, description, availability, quantity, reportsCount, reports } = req.body;
 
-        const detailsArr = [name, actualPrice, sellingPrice, productImages, category, tags, course, description, availability, quantity, reportsCount, reports];
+        const detailsArr = [name, actualPrice, sellingPrice, discount, productImages, category, tags, course, description, availability, quantity, reportsCount, reports];
 
-        const detailsVarArr = ['name', 'actualPrice', 'sellingPrice', 'productImages', 'category', 'tags', 'course', 'description', 'availability', 'quantity', 'reportsCount', 'reports']
+        const detailsVarArr = ['name', 'actualPrice', 'sellingPrice', 'discount', 'productImages', 'category', 'tags', 'course', 'description', 'availability', 'quantity', 'reportsCount', 'reports']
 
         for (let i = 0; i < detailsArr.length; i++) {
             if (detailsArr[i]) {
@@ -102,7 +132,7 @@ router.put("/editProduct/:id", fetchUser, async(req, res)=>{
         // Updating the product
         updatedProduct = await Product.findByIdAndUpdate(productId, { $set: updatedProduct }, { new: true });
 
-        res.status(200).json({ success: true, message: "Product editied successfully", updatedProduct});
+        res.status(200).json({ success: true, message: "Product editied successfully", updatedProduct });
     }
     catch (err) {
         // catching the error message if any occurred
@@ -111,17 +141,17 @@ router.put("/editProduct/:id", fetchUser, async(req, res)=>{
 })
 
 // Route : 4 - Getting information about product /getProduct   (No Login required)
-router.get("/getProduct/:id", async(req, res)=>{
+router.get("/getProduct/:id", async (req, res) => {
     const productId = req.params.id;
-    if(!productId){
+    if (!productId) {
         return res.status(400).json({ success: false, message: "Illegal action" })
     }
-    try{
+    try {
         let product = await Product.findById(productId);
-        if(!product){
-           return res.status(404).json({success: false, message: "No such product found"})
+        if (!product) {
+            return res.status(404).json({ success: false, message: "No such product found" })
         }
-        res.status(200).json({ success: true, product});
+        res.status(200).json({ success: true, product });
     }
     catch (err) {
         // catching the error message if any occurred
@@ -130,7 +160,7 @@ router.get("/getProduct/:id", async(req, res)=>{
 })
 
 // Route : 5 - Get all products /getAllProducts (No login required)
-router.get("/getAllProducts", async (req, res)=>{
+router.get("/getAllProducts", async (req, res) => {
     try {
         let products = await Product.find();
         if (!products) {
@@ -145,10 +175,10 @@ router.get("/getAllProducts", async (req, res)=>{
 })
 
 // Route : 6 - Get all products of a seller /getProductsBySeller (No login required)
-router.get("/getProductsBySeller/:id", async (req, res)=>{
+router.get("/getProductsBySeller/:id", async (req, res) => {
     try {
         const sellerId = req.params.id;
-        let products = await Product.find({seller: sellerId});
+        let products = await Product.find({ seller: sellerId });
         if (!products) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
@@ -161,10 +191,10 @@ router.get("/getProductsBySeller/:id", async (req, res)=>{
 })
 
 // Route : 7 - Get all products related to a institution /getProductsByInstitution (No login required)
-router.get("/getProductsByInstitution/:name", async (req, res)=>{
+router.get("/getProductsByInstitution/:name", async (req, res) => {
     try {
         const InstitutionName = req.params.name;
-        let products = await Product.find({ takeAwayPlace: InstitutionName});
+        let products = await Product.find({ takeAwayPlace: InstitutionName });
         if (!products) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
@@ -179,10 +209,10 @@ router.get("/getProductsByInstitution/:name", async (req, res)=>{
 // Route : 8 - Report a product /reportProduct (Login required)
 router.post("/reportProduct/:id", [
     body('report', "Report description must be 4 characters long").isLength({ min: 4 }),
-], fetchUser, async (req, res)=>{
+], fetchUser, async (req, res) => {
     try {
         let updatedProduct = {};
-        let availability = "available" 
+        let availability = "available"
 
         // arrays of errors
         const errors = validationResult(req);
@@ -202,7 +232,7 @@ router.post("/reportProduct/:id", [
         // console.log((product.reportsCount));
 
         // If already reported, remove the report
-        if(product.reportedBy.includes(req.user.id)){
+        if (product.reportedBy.includes(req.user.id)) {
             if (Number(product.reportsCount) - 1 <= 10) {
                 availability = "available"
             }
@@ -237,6 +267,29 @@ router.post("/reportProduct/:id", [
         updatedProduct = await Product.findByIdAndUpdate(productId, { $set: updatedProduct }, { new: true });
 
         res.status(200).json({ success: true, message, updatedProduct });
+    }
+    catch (err) {
+        // catching the error message if any occurred
+        res.status(400).json({ success: false, message: err.message });
+    }
+})
+
+// Route : 9 - Get all products by sorting /getSortedProducts (No login required)
+router.post("/getSortedProducts", async (req, res) => {
+    try {
+        var { sortingType } = req.body;
+        if(!sortingType){
+            sortingType = "sellingPrice"
+        }
+        let value = -1;
+        if (sortingType === "sellingPrice"){
+            value = 1
+        }
+        let products = await Product.find({}).sort({[sortingType] : value});
+        if (!products) {
+            return res.status(404).json({ success: false, message: "No such product found" })
+        }
+        res.status(200).json({ success: true, products });
     }
     catch (err) {
         // catching the error message if any occurred

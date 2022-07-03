@@ -1,4 +1,5 @@
 const express = require("express")
+const fs = require("fs")
 const router = express.Router();
 const User = require("../models/User")
 const { body, validationResult } = require('express-validator');
@@ -50,11 +51,28 @@ router.post("/signup", [
             password: hashedPassword,
             institution: req.body.institution,
             yearOfGraduation: req.body.yearOfGraduation,
-            displayPicture: req.body.displayPicture,
+            // displayPicture: req.body.displayPicture,
             contactNumber: req.body.contactNumber,
             gender: req.body.gender,
             city: req.body.gender
         })
+
+        blob = req.body.displayPicture.replace(/^data:image\/png;base64,/, '');
+
+        const isExists = fs.existsSync(`../fetn/public/Images/users/${user._id}`)
+        // console.log(isExists);
+        if (!isExists) {
+            fs.mkdirSync(`../fetn/public/Images/users/${user._id}`)
+        }
+
+        fs.writeFile(`../fetn/public/Images/users/${user._id}/dp.png`, blob, "base64", (err) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+
+        let updatedUser = { displayPicture: `${user._id}/dp.png`};
+        user = await User.findByIdAndUpdate(user._id, { $set: updatedUser }, { new: true });
 
         // data for token 
         let data = {
