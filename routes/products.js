@@ -5,7 +5,6 @@ const Product = require("../models/Product");
 const User = require("../models/User");
 const fetchUser = require("../middlewares/fetchUser")
 const { body, validationResult } = require('express-validator');
-const { findById } = require("../models/Product");
 
 
 // routes for /products
@@ -64,15 +63,15 @@ router.post("/listProduct", fetchUser, [
                 fs.mkdirSync(`../fetn/public/Images/products/${product._id}`)
             }
 
-            fs.writeFile(`../fetn/public/Images/products/${product._id}/view_${i+1}.png`, blob, "base64", (err)=>{
-                if(err){
+            fs.writeFile(`../fetn/public/Images/products/${product._id}/view_${i + 1}.png`, blob, "base64", (err) => {
+                if (err) {
                     console.log(err);
                 }
             })
-            newArr[i] = `${product._id}/view_${i+1}.png`
+            newArr[i] = `${product._id}/view_${i + 1}.png`
         })
-        
-        let updatedProduct = { productImages : newArr }
+
+        let updatedProduct = { productImages: newArr }
         product = await Product.findByIdAndUpdate(product._id, { $set: updatedProduct }, { new: true });
         res.json({ success: true, product });
     }
@@ -162,11 +161,20 @@ router.get("/getProduct/:id", async (req, res) => {
 // Route : 5 - Get all products /getAllProducts (No login required)
 router.get("/getAllProducts", async (req, res) => {
     try {
-        let products = await Product.find();
+        let limit = req.body.limit;
+        let startFrom = req.body.startFrom;
+        if(!limit){
+           limit = false;
+        }
+        if (!startFrom){
+            startFrom = 0;
+        }
+        let count = await Product.countDocuments();
+        let products = await Product.find({}, null, {skip: startFrom, limit: limit });
         if (!products) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
-        res.status(200).json({ success: true, products });
+        res.status(200).json({ success: true, resultsCount: count, products});
     }
     catch (err) {
         // catching the error message if any occurred
@@ -178,11 +186,12 @@ router.get("/getAllProducts", async (req, res) => {
 router.get("/getProductsBySeller/:id", async (req, res) => {
     try {
         const sellerId = req.params.id;
-        let products = await Product.find({ seller: sellerId });
+        let count = await Product.countDocuments();
+        let products = await Product.find({ seller: sellerId }, null, { limit: 2 });
         if (!products) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
-        res.status(200).json({ success: true, products });
+        res.status(200).json({ success: true, resultsCount: count, products });
     }
     catch (err) {
         // catching the error message if any occurred
@@ -191,14 +200,25 @@ router.get("/getProductsBySeller/:id", async (req, res) => {
 })
 
 // Route : 7 - Get all products related to a institution /getProductsByInstitution (No login required)
-router.get("/getProductsByInstitution/:name", async (req, res) => {
+router.post("/getProductsByInstitution/:name", async (req, res) => {
     try {
+        let limit = req.body.limit;
+        let startFrom = req.body.startFrom;
+
+        if (!startFrom) {
+            startFrom = 0;
+        }
+
+        if(!limit){
+           limit = false;
+        }
         const InstitutionName = req.params.name;
-        let products = await Product.find({ takeAwayPlace: InstitutionName });
+        let count = await Product.countDocuments({ takeAwayPlace: InstitutionName });
+        let products = await Product.find({ takeAwayPlace: InstitutionName }, null, {skip: startFrom, limit: limit });
         if (!products) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
-        res.status(200).json({ success: true, products });
+        res.status(200).json({ success: true, resultsCount: count, products });
     }
     catch (err) {
         // catching the error message if any occurred
@@ -277,19 +297,73 @@ router.post("/reportProduct/:id", [
 // Route : 9 - Get all products by sorting /getSortedProducts (No login required)
 router.post("/getSortedProducts", async (req, res) => {
     try {
+        let limit = req.body.limit;
+        let startFrom = req.body.startFrom;
+
+        if (!startFrom) {
+            startFrom = 0;
+        }
+
+        if (!limit) {
+            limit = false;
+        }
         var { sortingType } = req.body;
-        if(!sortingType){
+        if (!sortingType) {
             sortingType = "sellingPrice"
         }
         let value = -1;
-        if (sortingType === "sellingPrice"){
+        if (sortingType === "sellingPrice") {
             value = 1
         }
-        let products = await Product.find({}).sort({[sortingType] : value});
+        
+        let count = await Product.countDocuments();
+        let products = await Product.find({}, null, {skip: startFrom ,limit: limit}).sort({ [sortingType]: value });
         if (!products) {
             return res.status(404).json({ success: false, message: "No such product found" })
         }
-        res.status(200).json({ success: true, products });
+        res.status(200).json({ success: true, resultsCount: count ,products });
+    }
+    catch (err) {
+        // catching the error message if any occurred
+        res.status(400).json({ success: false, message: err.message });
+    }
+})
+
+// Route : 10 - Get products search results /searchProducts (No login required)
+router.post("/searchProducts", async (req, res) => {
+    let matching;
+    const { query } = req.body;
+    const queryArr = query.split(" ");
+    // console.log(queryArr);
+    try {
+        let products = await Product.find();
+        products = products.filter((e) => {
+            matching = 0;
+            queryArr.forEach((q) => {
+                if (e.name.toLowerCase().includes(q.toLowerCase()) || e.description.toLowerCase().includes(q.toLowerCase()) || e.category.toLowerCase().includes(q.toLowerCase()) || e.tags.includes(q.toLowerCase())) {
+                    matching++;
+                }
+            })
+            e.__v = matching;
+            // console.log(e.__v);
+            return matching;
+        })
+
+        // Sorting products by __v
+        for (let i = 0; i < products.length-1; i++) {
+            for (let j = i; j < products.length; j++) {
+                if (products[i].__v < products[j].__v){
+                    let temp = products[i];
+                    products[i] = products[j];
+                    products[j] = temp;
+                }
+            }
+        }
+
+        if (!products) {
+            return res.status(404).json({ success: false, message: "No such product found" })
+        }
+        res.status(200).json({ success: true, resultsCount: products.length, products });
     }
     catch (err) {
         // catching the error message if any occurred
