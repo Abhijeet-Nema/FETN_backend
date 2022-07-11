@@ -274,7 +274,6 @@ router.get("/getUsersList", fetchUser, async (req, res) => {
 })
 
 // Route 8: /addToWishlist - to add product in user's wishlist, Login required
-
 router.post("/addToWishlist", fetchUser, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -295,7 +294,7 @@ router.post("/addToWishlist", fetchUser, async (req, res) => {
             isAdded = false;
         }
         else {
-            wishlist = [...user.wishlist, productId];
+            wishlist = [productId , ...user.wishlist];
             isAdded = true;
         }
         updatedUser = { wishlist }
@@ -307,5 +306,67 @@ router.post("/addToWishlist", fetchUser, async (req, res) => {
         res.status(400).json({ success: false, error: err.message });
     }
 })
+
+// Route 9: /addNotification- to add a notification in user's notifications, Login required
+router.post("/addNotification", fetchUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let user = await User.findById(userId);
+    if (!user) {
+      // Not found
+      return res
+        .status(401)
+        .json({ success: false, message: "Needs authentictaion" });
+    }
+    const { notification } = req.body;
+    let date = new Date();
+    date = date.getDate() + "/" + Number(date.getUTCMonth()+1) + "/" + date.getUTCFullYear();
+    let updatedUser = { notifications: [{time: date, message: notification}, ...user.notifications] };
+
+    // Updating the user details
+    user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updatedUser },
+      { new: true }
+    );
+    res.json({ success: true, user });
+  } catch (err) {
+    // catching the error message if any occurred
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Route 9: /deleteNotification- to delete a notification from user's notifications, Login required
+router.post("/deleteNotification", fetchUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let user = await User.findById(userId);
+    if (!user) {
+      // Not found
+      return res
+        .status(401)
+        .json({ success: false, message: "Needs authentictaion" });
+    }
+    var { notificationInd, deleteCount } = req.body;
+    if (!deleteCount){
+        deleteCount = 1;
+    } 
+    user.notifications.splice(notificationInd, deleteCount);
+    let updatedUser = {
+      notifications: user.notifications
+    };
+
+    // Updating the user details
+    user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updatedUser },
+      { new: true }
+    );
+    res.json({ success: true, user });
+  } catch (err) {
+    // catching the error message if any occurred
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;

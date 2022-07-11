@@ -48,6 +48,9 @@ const userSchema = new Schema({
     },
     wishlist: {
         type: Array
+    },
+    notifications: {
+        type: Array
     }
 })
 
