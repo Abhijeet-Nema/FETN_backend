@@ -124,6 +124,19 @@ router.delete("/deleteProduct/:id", fetchUser, async (req, res) => {
         message: "Not permitted to perform this action"
       });
     }
+
+    for (let index = 0; index < 3; index++) {
+      if(fs.existsSync(`../fetn/public/Images/products/${productId}/view_${index + 1}.png`)){
+        fs.unlinkSync(`../fetn/public/Images/products/${productId}/view_${index + 1}.png`, (err)=>{
+          console.log(err);
+        });
+      }
+    }
+
+    fs.rmdir(`../fetn/public/Images/products/${productId}`, (err)=>{
+      console.log(err);
+    });
+    
     product = await Product.findByIdAndDelete(productId);
     res.status(200).json({
       success: true,
@@ -208,6 +221,43 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
       }
     }
 
+    let newArr = req.body.productImages;
+    const isExists = fs.existsSync(
+      `../fetn/public/Images/products/${product._id}`
+    );
+
+    if (!isExists) {
+      fs.mkdirSync(`../fetn/public/Images/products/${product._id}`);
+    }
+
+    for (let index = 0; index < 3; index++) {
+      if(fs.existsSync(`../fetn/public/Images/products/${product._id}/view_${index + 1}.png`)){
+        fs.unlinkSync(`../fetn/public/Images/products/${product._id}/view_${index + 1}.png`, (err)=>{
+          console.log(err);
+        });
+      }
+    }
+
+    newArr.forEach((element, i) => {
+      blob = element.replace(/^data:image\/png;base64,/, "");
+      fs.writeFile(
+        `../fetn/public/Images/products/${product._id}/view_${i + 1}.png`,
+        blob,
+        "base64",
+        (err) => {
+          if (err) {
+            console.log(err);
+          }
+        }
+      );
+      newArr[i] = `${product._id}/view_${i + 1}.png`;
+    });
+
+    updatedProduct.productImages = newArr;
+    updatedProduct.discount = Math.round(
+          ((updatedProduct.actualPrice - updatedProduct.sellingPrice) * 100) /
+            updatedProduct.actualPrice
+        )
     // Updating the product
     updatedProduct = await Product.findByIdAndUpdate(
       productId,
@@ -275,11 +325,45 @@ router.get("/getAllProducts", async (req, res) => {
 });
 
 // Route : 6 - Get all products of a seller /getProductsBySeller (No login required)
-router.get("/getProductsBySeller/:id", async (req, res) => {
+router.post("/getProductsBySeller/:id", fetchUser, async (req, res) => {
   try {
+    if (!req.user.id) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Autenticate to do this action" });
+    }
+    let limit = req.body.limit;
+    let startFrom = req.body.startFrom;
+    let availability = req.body.availability;
     const sellerId = req.params.id;
-    let count = await Product.countDocuments();
-    let products = await Product.find({ seller: sellerId }, null, { limit: 2 });
+    let count;
+    let products;
+
+    if (!startFrom) {
+      startFrom = 0;
+    }
+
+    if (!limit) {
+      limit = 2;
+    }
+    if (!availability) {
+      count = await Product.countDocuments({
+        seller: sellerId,
+        availability: "available"
+      });
+      products = await Product.find(
+        { seller: sellerId, availability: "available" },
+        null,
+        { skip: startFrom, limit: limit }
+      );
+    } else {
+      count = await Product.countDocuments({ seller: sellerId });
+      products = await Product.find({ seller: sellerId }, null, {
+        skip: startFrom,
+        limit: limit
+      });
+    }
+
     if (!products) {
       return res
         .status(404)
@@ -307,10 +391,11 @@ router.post("/getProductsByInstitution/:name", async (req, res) => {
     }
     const InstitutionName = req.params.name;
     let count = await Product.countDocuments({
-      takeAwayPlace: InstitutionName
+      takeAwayPlace: InstitutionName,
+      availability: "available"
     });
     let products = await Product.find(
-      { takeAwayPlace: InstitutionName },
+      { takeAwayPlace: InstitutionName, availability: "available" },
       null,
       { skip: startFrom, limit: limit }
     );
@@ -430,8 +515,8 @@ router.post("/getSortedProducts", async (req, res) => {
       value = 1;
     }
 
-    let count = await Product.countDocuments();
-    let products = await Product.find({}, null, {
+    let count = await Product.countDocuments({ availability: "available" });
+    let products = await Product.find({ availability: "available" }, null, {
       skip: startFrom,
       limit: limit
     }).sort({ [sortingType]: value });
@@ -454,7 +539,7 @@ router.post("/searchProducts", async (req, res) => {
   const queryArr = query.split(" ");
   // console.log(queryArr);
   try {
-    let products = await Product.find();
+    let products = await Product.find({ availability: "available" });
     products = products.filter((e) => {
       matching = 0;
       queryArr.forEach((q) => {

@@ -30,9 +30,6 @@ const userSchema = new Schema({
     displayPicture: {
         type: String
     },
-    contactNumber : {
-        type: Number
-    },
     gender : {
         type: String
     },
@@ -44,7 +41,7 @@ const userSchema = new Schema({
         type: String
     },
     contact: {
-        type: Number
+        type: String
     },
     wishlist: {
         type: Array

@@ -167,21 +167,21 @@ router.delete("/deleteUser", async (req, res) => {
 })
 
 // Route 4 : Updating User details /auth/updateUser - Login is required
-router.put("/updateUser", fetchUser, async (req, res) => {
+router.post("/updateUser", fetchUser, async (req, res) => {
     let updatedUser = {};
     try {
-        let { name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, currentPassword, about, contact } = req.body;
+        let { name, password, institution, yearOfGraduation, displayPicture, gender, city, currentPassword, about, contact } = req.body;
         if (!currentPassword) {
             return res.status(400).json({ success: false, message: "Incorrect current password" })
             // currentPassword = "";
         }
         // Array of destructured details
-        const detailsArr = [name, password, institution, yearOfGraduation, displayPicture, contactNumber, gender, city, about, contact];
-        const detailsVarArr = ['name', 'password', 'institution', 'yearOfGraduation', 'displayPicture', 'contactNumber', 'gender', 'city', 'about', 'contact'];
+        const detailsArr = [name, password, institution, yearOfGraduation, displayPicture, gender, city, about, contact];
+        const detailsVarArr = ['name', 'password', 'institution', 'yearOfGraduation', 'displayPicture', 'gender', 'city', 'about', 'contact'];
 
         for (let i = 0; i < detailsArr.length; i++) {
-            if (detailsArr[i]) {
-                updatedUser[detailsVarArr[i]] = detailsArr[i];
+            if (detailsArr[i] && detailsArr[i] !== displayPicture) {
+              updatedUser[detailsVarArr[i]] = detailsArr[i];
             }
         }
 
@@ -209,10 +209,26 @@ router.put("/updateUser", fetchUser, async (req, res) => {
         const isPasswordMatched = await bcrypt.compare(currentPassword, user.password);
         if (!isPasswordMatched) {
             // If password not matched
-            return res.status(403).json({ success: false, message: "Forbidden action" })
+            return res.status(403).json({ success: false, message: "Check your credentials and try again!" })
         }
 
         // Updating the user details
+
+        if(displayPicture){
+            const dpExists = fs.existsSync(`../fetn/public/Images/users/${user._id}/dp.png`)
+             if (dpExists) {
+                 fs.unlinkSync(`../fetn/public/Images/users/${user._id}/dp.png`);
+             }
+     
+             blob = displayPicture.replace(/^data:image\/png;base64,/, "");
+     
+             fs.writeFile(`../fetn/public/Images/users/${user._id}/dp.png`, blob, "base64", (err) => {
+                 if (err) {
+                     console.log(err);
+                 }
+             })
+        }
+
         user = await User.findByIdAndUpdate(userId, { $set: updatedUser }, { new: true });
         res.json({ success: true, updatedUser });
     }
@@ -307,16 +323,22 @@ router.post("/addToWishlist", fetchUser, async (req, res) => {
     }
 })
 
-// Route 9: /addNotification- to add a notification in user's notifications, Login required
-router.post("/addNotification", fetchUser, async (req, res) => {
+// Route 9: /addNotification- to add a notification in user's notifications, No login required
+router.post("/addNotification",fetchUser ,async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.body.id;
     let user = await User.findById(userId);
-    if (!user) {
-      // Not found
+    if (!req.user.id) {
+      // User not found
       return res
         .status(401)
         .json({ success: false, message: "Needs authentictaion" });
+    }
+    if (!user) {
+      // Seller not found
+      return res
+        .status(403)
+        .json({ success: false, message: "Seller not found" });
     }
     const { notification } = req.body;
     let date = new Date();
