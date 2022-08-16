@@ -52,7 +52,7 @@ router.post("/signup", [
             institution: req.body.institution,
             yearOfGraduation: req.body.yearOfGraduation,
             // displayPicture: req.body.displayPicture,
-            contactNumber: req.body.contactNumber,
+            contact: req.body.contact,
             gender: req.body.gender,
             city: req.body.gender
         })
@@ -85,7 +85,7 @@ router.post("/signup", [
         let authtoken = jwt.sign(data, JWT_TOKEN);
 
         // Sending token in response
-        res.json({ success: true, authtoken });
+        res.json({ success: true, authtoken, user });
     }
     catch (err) {
         // catching the error message if any occurred
@@ -230,7 +230,7 @@ router.post("/updateUser", fetchUser, async (req, res) => {
         }
 
         user = await User.findByIdAndUpdate(userId, { $set: updatedUser }, { new: true });
-        res.json({ success: true, updatedUser });
+        res.json({ success: true, updatedUser: user });
     }
     catch (err) {
         // catching the error message if any occurred
