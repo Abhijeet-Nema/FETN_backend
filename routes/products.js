@@ -5,6 +5,7 @@ const Product = require("../models/Product");
 const User = require("../models/User");
 const fetchUser = require("../middlewares/fetchUser");
 const { body, validationResult } = require("express-validator");
+const productsImgPath = "./Images/products/";
 
 // routes for /products
 // router.get("/", (req, res) => {
@@ -74,15 +75,15 @@ router.post(
         blob = element.replace(/^data:image\/png;base64,/, "");
 
         const isExists = fs.existsSync(
-          `../fetn/public/Images/products/${product._id}`
+          `${productsImgPath}${product._id}`
         );
         // console.log(isExists);
         if (!isExists) {
-          fs.mkdirSync(`../fetn/public/Images/products/${product._id}`);
+          fs.mkdirSync(`${productsImgPath}${product._id}`);
         }
 
         fs.writeFile(
-          `../fetn/public/Images/products/${product._id}/view_${i + 1}.png`,
+          `${productsImgPath}${product._id}/view_${i + 1}.png`,
           blob,
           "base64",
           (err) => {
@@ -126,14 +127,14 @@ router.delete("/deleteProduct/:id", fetchUser, async (req, res) => {
     }
 
     for (let index = 0; index < 3; index++) {
-      if(fs.existsSync(`../fetn/public/Images/products/${productId}/view_${index + 1}.png`)){
-        fs.unlinkSync(`../fetn/public/Images/products/${productId}/view_${index + 1}.png`, (err)=>{
+      if(fs.existsSync(`${productsImgPath}${productId}/view_${index + 1}.png`)){
+        fs.unlinkSync(`${productsImgPath}${productId}/view_${index + 1}.png`, (err)=>{
           console.log(err);
         });
       }
     }
 
-    fs.rmdir(`../fetn/public/Images/products/${productId}`, (err)=>{
+    fs.rmdir(`${productsImgPath}${productId}`, (err)=>{
       console.log(err);
     });
     
@@ -223,16 +224,16 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
 
     let newArr = req.body.productImages;
     const isExists = fs.existsSync(
-      `../fetn/public/Images/products/${product._id}`
+      `${productsImgPath}${product._id}`
     );
 
     if (!isExists) {
-      fs.mkdirSync(`../fetn/public/Images/products/${product._id}`);
+      fs.mkdirSync(`${productsImgPath}${product._id}`);
     }
 
     for (let index = 0; index < 3; index++) {
-      if(fs.existsSync(`../fetn/public/Images/products/${product._id}/view_${index + 1}.png`)){
-        fs.unlinkSync(`../fetn/public/Images/products/${product._id}/view_${index + 1}.png`, (err)=>{
+      if(fs.existsSync(`${productsImgPath}${product._id}/view_${index + 1}.png`)){
+        fs.unlinkSync(`${productsImgPath}${product._id}/view_${index + 1}.png`, (err)=>{
           console.log(err);
         });
       }
@@ -241,7 +242,7 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
     newArr.forEach((element, i) => {
       blob = element.replace(/^data:image\/png;base64,/, "");
       fs.writeFile(
-        `../fetn/public/Images/products/${product._id}/view_${i + 1}.png`,
+        `${productsImgPath}${product._id}/view_${i + 1}.png`,
         blob,
         "base64",
         (err) => {

@@ -6,6 +6,7 @@ const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fetchUser = require('../middlewares/fetchUser');
+const usersImgPath = "./Images/users/";
 
 // Encoded by webCalculator and Google Encoder
 const JWT_TOKEN = "MTAwMDExMCAxMDAwMTAxIDEwMTAxMDAgMTAwMTExMCAxMDAwMDAgMTExMDAxMSAxMTAxMDAxIDExMDAxMTEgMTEwMTExMCAxMTAwMDAxIDExMTAxMDAgMTExMDEwMSAxMTEwMDEwIDExMDAxMDEgMTAwMDAwIDExMDEwMTEgMTEwMDEwMSAxMTExMDAx";
@@ -59,13 +60,13 @@ router.post("/signup", [
 
         blob = req.body.displayPicture.replace(/^data:image\/png;base64,/, '');
 
-        const isExists = fs.existsSync(`../fetn/public/Images/users/${user._id}`)
+        const isExists = fs.existsSync(usersImgPath +user._id);
         // console.log(isExists);
         if (!isExists) {
-            fs.mkdirSync(`../fetn/public/Images/users/${user._id}`)
+            fs.mkdirSync(usersImgPath + user._id);
         }
 
-        fs.writeFile(`../fetn/public/Images/users/${user._id}/dp.png`, blob, "base64", (err) => {
+        fs.writeFile(`${usersImgPath}${user._id}/dp.png`, blob, "base64", (err) => {
             if (err) {
                 console.log(err);
             }
@@ -215,14 +216,14 @@ router.post("/updateUser", fetchUser, async (req, res) => {
         // Updating the user details
 
         if(displayPicture){
-            const dpExists = fs.existsSync(`../fetn/public/Images/users/${user._id}/dp.png`)
+            const dpExists = fs.existsSync(`${usersImgPath}${user._id}/dp.png`)
              if (dpExists) {
-                 fs.unlinkSync(`../fetn/public/Images/users/${user._id}/dp.png`);
+                 fs.unlinkSync(`${usersImgPath}${user._id}/dp.png`);
              }
      
              blob = displayPicture.replace(/^data:image\/png;base64,/, "");
      
-             fs.writeFile(`../fetn/public/Images/users/${user._id}/dp.png`, blob, "base64", (err) => {
+             fs.writeFile(`${usersImgPath}${user._id}/dp.png`, blob, "base64", (err) => {
                  if (err) {
                      console.log(err);
                  }

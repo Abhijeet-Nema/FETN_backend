@@ -2,6 +2,7 @@ console.log("Let's begin!");
 const express = require("express");
 const cors = require("cors");
 const connectToDB = require("./db")
+const path = require("path")
 connectToDB();
 
 const app = express();
@@ -14,6 +15,14 @@ app.use(cors())
 app.get("/",(req, res)=>{
     res.send("FETN on service!")
 })
+
+app.get("/Images/users/:user/dp.png", function (req, res) {
+  res.sendFile(path.join(__dirname, "Images/users", req.params.user + "/dp.png"));
+});
+
+app.get("/Images/products/:product/:view", function (req, res) {
+  res.sendFile(path.join(__dirname, "Images/products", `${req.params.product}/${req.params.view}`));
+});
 
 app.use("/auth", require("./routes/auth"))
 app.use("/products", require("./routes/products"))
