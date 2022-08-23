@@ -48,12 +48,10 @@ router.post(
     try {
       let user = await User.findOne({ email: req.body.email });
       if (user) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "User with same email already exists"
-          });
+        return res.status(400).json({
+          success: false,
+          message: "User with same email already exists"
+        });
       }
 
       // Generating salt
@@ -75,12 +73,12 @@ router.post(
         city: req.body.gender
       });
 
-      blob = req.body.displayPicture.substr(displayPicture.indexOf("base64,")+7,);
+      blob = req.body.displayPicture.replace(/^data:image\/png;base64,/, "");
 
       const isExists = fs.existsSync(usersImgPath + user._id);
       // console.log(isExists);
       if (!isExists) {
-        fs.mkdirSync(usersImgPath + user._id, { recursive: true });
+        fs.mkdirSync(usersImgPath + user._id);
       }
 
       fs.writeFile(
@@ -170,45 +168,31 @@ router.delete("/deleteUser", async (req, res) => {
 
     if (!user) {
       // Not found
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Forbidden action, try with proper credentials"
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden action, try with proper credentials"
+      });
     }
     // Matching passwords by bcrypt.compare
     const isPasswordMatched = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatched) {
       // If password not matched
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Forbidden action, try with proper credentials"
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden action, try with proper credentials"
+      });
     }
 
     if (name !== user.name) {
       // If name not matched
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Forbidden action, try with proper credentials"
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden action, try with proper credentials"
+      });
     }
 
     const id = user.id;
-
-     const dpExists = fs.existsSync(`${usersImgPath}${id}/dp.png`);
-     if (dpExists) {
-       fs.unlinkSync(`${usersImgPath}${id}/dp.png`);
-       fs.rmdir(`${usersImgPath}${id}`, (err) => {
-         console.log(err);
-       });
-     }
     // res.send(id);
     let result = await User.findByIdAndDelete(id);
     res.json({ success: true, message: "User deleted successfully" });
@@ -299,29 +283,26 @@ router.post("/updateUser", fetchUser, async (req, res) => {
     );
     if (!isPasswordMatched) {
       // If password not matched
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Check your credentials and try again!"
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Check your credentials and try again!"
+      });
     }
 
     // Updating the user details
 
     if (displayPicture) {
-        const isExists = fs.existsSync(usersImgPath + user._id);
+      const isExists = fs.existsSync(usersImgPath + user._id);
       // console.log(isExists);
       if (!isExists) {
-        fs.mkdirSync(usersImgPath + user._id, { recursive: true });
+        fs.mkdirSync(usersImgPath + user._id);
       }
       const dpExists = fs.existsSync(`${usersImgPath}${user._id}/dp.png`);
       if (dpExists) {
         fs.unlinkSync(`${usersImgPath}${user._id}/dp.png`);
       }
 
-      // blob = displayPicture.replace(/^data:image\/png;base64,/, "");
-      blob = displayPicture.substr(displayPicture.indexOf("base64,")+7,);
+      blob = displayPicture.replace(/^data:image\/png;base64,/, "");
 
       fs.writeFile(
         `${usersImgPath}${user._id}/dp.png`,
@@ -468,8 +449,6 @@ router.post("/addNotification", fetchUser, async (req, res) => {
       Number(date.getUTCMonth() + 1) +
       "/" +
       date.getUTCFullYear();
-      console.log(date);
-      return;
     let updatedUser = {
       notifications: [
         { time: date, message: notification },
