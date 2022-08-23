@@ -75,7 +75,7 @@ router.post(
         city: req.body.gender
       });
 
-      blob = req.body.displayPicture.replace(/^data:image\/png;base64,/, "");
+      blob = req.body.displayPicture.substr(displayPicture.indexOf("base64,")+7,);
 
       const isExists = fs.existsSync(usersImgPath + user._id);
       // console.log(isExists);
@@ -201,6 +201,14 @@ router.delete("/deleteUser", async (req, res) => {
     }
 
     const id = user.id;
+
+     const dpExists = fs.existsSync(`${usersImgPath}${id}/dp.png`);
+     if (dpExists) {
+       fs.unlinkSync(`${usersImgPath}${id}/dp.png`);
+       fs.rmdir(`${usersImgPath}${id}`, (err) => {
+         console.log(err);
+       });
+     }
     // res.send(id);
     let result = await User.findByIdAndDelete(id);
     res.json({ success: true, message: "User deleted successfully" });
@@ -312,7 +320,8 @@ router.post("/updateUser", fetchUser, async (req, res) => {
         fs.unlinkSync(`${usersImgPath}${user._id}/dp.png`);
       }
 
-      blob = displayPicture.replace(/^data:image\/png;base64,/, "");
+      // blob = displayPicture.replace(/^data:image\/png;base64,/, "");
+      blob = displayPicture.substr(displayPicture.indexOf("base64,")+7,);
 
       fs.writeFile(
         `${usersImgPath}${user._id}/dp.png`,
@@ -459,6 +468,8 @@ router.post("/addNotification", fetchUser, async (req, res) => {
       Number(date.getUTCMonth() + 1) +
       "/" +
       date.getUTCFullYear();
+      console.log(date);
+      return;
     let updatedUser = {
       notifications: [
         { time: date, message: notification },

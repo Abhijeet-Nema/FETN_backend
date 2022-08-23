@@ -72,7 +72,7 @@ router.post(
 
       let newArr = req.body.productImages;
       newArr.forEach((element, i) => {
-        blob = element.replace(/^data:image\/png;base64,/, "");
+        blob = element.substr(element.indexOf("base64,") + 7);
 
         const isExists = fs.existsSync(
           `${productsImgPath}${product._id}`
@@ -240,7 +240,9 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
     }
 
     newArr.forEach((element, i) => {
-      blob = element.replace(/^data:image\/png;base64,/, "");
+      // blob = element.replace(/^data:image\/png;base64,/, "");
+      blob = element.substr(element.indexOf("base64,") + 7);
+
       fs.writeFile(
         `${productsImgPath}${product._id}/view_${i + 1}.png`,
         blob,
