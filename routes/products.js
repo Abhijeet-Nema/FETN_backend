@@ -79,7 +79,7 @@ router.post(
         );
         // console.log(isExists);
         if (!isExists) {
-          fs.mkdirSync(`${productsImgPath}${product._id}`);
+          fs.mkdirSync(`${productsImgPath}${product._id}`, { recursive: true });
         }
 
         fs.writeFile(
@@ -228,7 +228,7 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
     );
 
     if (!isExists) {
-      fs.mkdirSync(`${productsImgPath}${product._id}`);
+      fs.mkdirSync(`${productsImgPath}${product._id}`, { recursive: true });
     }
 
     for (let index = 0; index < 3; index++) {

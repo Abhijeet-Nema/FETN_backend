@@ -80,7 +80,7 @@ router.post(
       const isExists = fs.existsSync(usersImgPath + user._id);
       // console.log(isExists);
       if (!isExists) {
-        fs.mkdirSync(usersImgPath + user._id);
+        fs.mkdirSync(usersImgPath + user._id, { recursive: true });
       }
 
       fs.writeFile(
@@ -313,7 +313,7 @@ router.post("/updateUser", fetchUser, async (req, res) => {
         const isExists = fs.existsSync(usersImgPath + user._id);
       // console.log(isExists);
       if (!isExists) {
-        fs.mkdirSync(usersImgPath + user._id);
+        fs.mkdirSync(usersImgPath + user._id, { recursive: true });
       }
       const dpExists = fs.existsSync(`${usersImgPath}${user._id}/dp.png`);
       if (dpExists) {
