@@ -41,7 +41,8 @@ const userSchema = new Schema({
         type: String
     },
     contact: {
-        type: String
+        type: String,
+        required: true
     },
     wishlist: {
         type: Array

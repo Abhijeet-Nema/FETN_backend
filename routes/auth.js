@@ -29,6 +29,9 @@ router.post(
     body("name", "Name must be of atleast 3 characters long").isLength({
       min: 3
     }),
+    body("contact", "Contact field must contain valid contact number").isLength({
+      min: 10
+    }),
     body(
       "institution",
       "Institution name must be of atleast 3 characters long"
@@ -46,11 +49,19 @@ router.post(
     }
 
     try {
-      let user = await User.findOne({ email: req.body.email });
-      if (user) {
+      let userWithEmail = await User.findOne({ email: req.body.email });
+      let userWithNumber = await User.findOne({ contact: req.body.contact });
+      
+      if (userWithEmail) {
         return res.status(400).json({
           success: false,
-          message: "User with same email already exists"
+          message: "Your email is already registered"
+        });
+      }
+      if (userWithNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile number is already registered"
         });
       }
 
@@ -74,7 +85,7 @@ router.post(
       });
 
       blob = req.body.displayPicture.substr(
-        displayPicture.indexOf("base64,") + 7
+        req.body.displayPicture.indexOf("base64,") + 7
       );
 
       const isExists = fs.existsSync(usersImgPath + user._id);
@@ -198,7 +209,9 @@ router.delete("/deleteUser", async (req, res) => {
 
     const dpExists = fs.existsSync(`${usersImgPath}${id}/dp.png`);
     if (dpExists) {
-      fs.unlinkSync(`${usersImgPath}${id}/dp.png`);
+      fs.unlinkSync(`${usersImgPath}${id}/dp.png`, (err)=>{
+        console.log(err);
+      });
       fs.rmdir(`${usersImgPath}${id}`, (err) => {
         console.log(err);
       });
@@ -225,8 +238,8 @@ router.post("/updateUser", fetchUser, async (req, res) => {
       gender,
       city,
       currentPassword,
-      about,
-      contact
+      about
+      // contact
     } = req.body;
     if (!currentPassword) {
       return res
@@ -243,8 +256,8 @@ router.post("/updateUser", fetchUser, async (req, res) => {
       displayPicture,
       gender,
       city,
-      about,
-      contact
+      about
+      // contact
     ];
     const detailsVarArr = [
       "name",
@@ -254,8 +267,8 @@ router.post("/updateUser", fetchUser, async (req, res) => {
       "displayPicture",
       "gender",
       "city",
-      "about",
-      "contact"
+      "about"
+      // "contact"
     ];
 
     for (let i = 0; i < detailsArr.length; i++) {
