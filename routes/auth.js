@@ -593,14 +593,9 @@ If you did not request a new password, you can ignore this email. Your password 
     // Generating hashed password for hashed otp
     let hashedOtp = await bcrypt.hash(otp, salt);
     
-    let cookieValue = { userId: user.id, code: hashedOtp };
-    // console.log(cookieValue);
-    // Send hashed cookies with userId and otp
-    res.cookie("fetnPassRecovery", cookieValue, {
-      maxAge: 1000 * 60 * 15,
-      httpOnly: true
-    });
-    res.json({ success: true });
+    let verificationModule = { userId: user.id, code: hashedOtp, expiry: Date.now()+(1000*60*15) };
+ 
+    res.json({ success: true, verificationModule });
   } catch (err) {
     // catching the error message if any occurred
     res.status(400).json({ success: false, error: err.message });
@@ -628,12 +623,13 @@ router.post(
       });
     }
     try {
-      let cookie = req.cookies.fetnPassRecovery;
-      const { newPassword, otp } = req.body;
-      // console.log(cookie);
-      let optMatch = await bcrypt.compare(otp, cookie.code);
-      if (cookie) {
-        if (!otp || !optMatch) {
+      const { newPassword, otp, verificationModule } = req.body;
+      const {userId, code, expiry} = verificationModule;
+
+      // console.log(req.body);
+      let otpMatch = await bcrypt.compare(otp, code);
+      if (expiry > Date.now()) {
+        if (!otp || !otpMatch) {
           return res
             .status(403)
             .json({
@@ -650,7 +646,7 @@ router.post(
         let hashedPassword = await bcrypt.hash(newPassword, salt);
         let updatedUser = { password: hashedPassword };
         let user = await User.findByIdAndUpdate(
-          cookie.userId,
+          userId,
           { $set: updatedUser },
           { new: true }
         );
