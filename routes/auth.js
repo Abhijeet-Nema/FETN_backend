@@ -7,6 +7,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const fetchUser = require("../middlewares/fetchUser");
 const usersImgPath = "./Images/users/";
+var nodemailer = require("nodemailer");
+const otpGenerator = require("otp-generator");
 
 // Encoded by webCalculator and Google Encoder
 const JWT_TOKEN =
@@ -29,7 +31,10 @@ router.post(
     body("name", "Name must be of atleast 3 characters long").isLength({
       min: 3
     }),
-    body("contact", "Contact field must contain valid contact number").isLength({
+    body(
+      "contact",
+      "Contact field must contain valid contact number"
+    ).isLength({
       min: 10
     }),
     body(
@@ -51,7 +56,7 @@ router.post(
     try {
       let userWithEmail = await User.findOne({ email: req.body.email });
       let userWithNumber = await User.findOne({ contact: req.body.contact });
-      
+
       if (userWithEmail) {
         return res.status(400).json({
           success: false,
@@ -94,16 +99,11 @@ router.post(
         fs.mkdirSync(usersImgPath + user._id);
       }
 
-      fs.writeFile(
-        `${usersImgPath}${user._id}/dp.png`,
-        blob,
-        "base64",
-        (err) => {
-          if (err) {
-            console.log(err);
-          }
+      fs.writeFile(`${usersImgPath}${user._id}/dp.png`, blob, "base64", err => {
+        if (err) {
+          console.log(err);
         }
-      );
+      });
 
       let updatedUser = { displayPicture: `${user._id}/dp.png` };
       user = await User.findByIdAndUpdate(
@@ -209,10 +209,10 @@ router.delete("/deleteUser", async (req, res) => {
 
     const dpExists = fs.existsSync(`${usersImgPath}${id}/dp.png`);
     if (dpExists) {
-      fs.unlinkSync(`${usersImgPath}${id}/dp.png`, (err)=>{
+      fs.unlinkSync(`${usersImgPath}${id}/dp.png`, err => {
         console.log(err);
       });
-      fs.rmdir(`${usersImgPath}${id}`, (err) => {
+      fs.rmdir(`${usersImgPath}${id}`, err => {
         console.log(err);
       });
     }
@@ -328,16 +328,11 @@ router.post("/updateUser", fetchUser, async (req, res) => {
       // blob = displayPicture.replace(/^data:image\/png;base64,/, "");
       blob = displayPicture.substr(displayPicture.indexOf("base64,") + 7);
 
-      fs.writeFile(
-        `${usersImgPath}${user._id}/dp.png`,
-        blob,
-        "base64",
-        (err) => {
-          if (err) {
-            console.log(err);
-          }
+      fs.writeFile(`${usersImgPath}${user._id}/dp.png`, blob, "base64", err => {
+        if (err) {
+          console.log(err);
         }
-      );
+      });
     }
 
     user = await User.findByIdAndUpdate(
@@ -527,5 +522,153 @@ router.post("/deleteNotification", fetchUser, async (req, res) => {
     res.status(400).json({ success: false, error: err.message });
   }
 });
+
+// Route 10: /sendRecoveryEmail- to recover password with forget password, no Login required
+router.post("/sendRecoveryEmail", async (req, res) => {
+  try {
+    // Send recovery email and set cookies
+    let { email } = req.body;
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Not found
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message:
+            "No such user found. Try again with registered email address!"
+        });
+    }
+    let pass = process.env.APP_PASSWORD;
+    let sender = process.env.MAIL_FROM;
+
+    let otp = otpGenerator.generate(6, {
+      specialChars: false,
+      lowerCaseAlphabets: false,
+      upperCaseAlphabets: false
+    });
+
+    const msg = {
+      from: sender,
+      to: email,
+      subject:
+        "Password recovery for user " + user._id + ", Username: " + user.name,
+      text: `Dear ${user.name}! We have recieved a request to reset the password for the FETN account associated with ${email}. No changes have been made to your account yet.
+        
+You can reset your account password with the given One Time Password. Do not share it with anyone. It will get expired after 15 minutes.
+        
+OTP: ${otp}
+        
+If you did not request a new password, you can ignore this email. Your password will not be changed.
+        
+- FETN team`
+    };
+
+    nodemailer
+      .createTransport({
+        service: "gmail",
+        secure: false, // use SSL,
+        tls: {
+          rejectUnauthorized: false
+        },
+        auth: {
+          user: sender,
+          pass: pass
+        },
+        post: 456,
+        host: "smtp.gmail.com"
+      })
+      .sendMail(msg, err => {
+        if (err) {
+          return res.status(400).json({ success: false, error: err });
+        } else {
+          console.log("Email sent: ");
+        }
+      });
+
+    // Hashing otp
+    // Generating salt for hashed otp
+    let salt = await bcrypt.genSalt(10);
+
+    // Generating hashed password for hashed otp
+    let hashedOtp = await bcrypt.hash(otp, salt);
+    
+    let cookieValue = { userId: user.id, code: hashedOtp };
+    // console.log(cookieValue);
+    // Send hashed cookies with userId and otp
+    res.cookie("fetnPassRecovery", cookieValue, {
+      maxAge: 1000 * 60 * 15,
+      httpOnly: true
+    });
+    res.json({ success: true });
+  } catch (err) {
+    // catching the error message if any occurred
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Route 11: /updateRecoveryPassword- to update password in the database, no Login required
+router.post(
+  "/updateRecoveryPassword",
+  body(
+    "newPassword",
+    "Password must be of atleast 5 characters long"
+  ).isLength({
+    min: 5
+  }),
+  async (req, res) => {
+    // arrays of errors
+    const errors = validationResult(req);
+
+    // checking whether getting any error if yes then return
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0]
+      });
+    }
+    try {
+      let cookie = req.cookies.fetnPassRecovery;
+      const { newPassword, otp } = req.body;
+      // console.log(cookie);
+      let optMatch = await bcrypt.compare(otp, cookie.code);
+      if (cookie) {
+        if (!otp || !optMatch) {
+          return res
+            .status(403)
+            .json({
+              success: false,
+              message: "Incorrect OTP"
+            });
+        }
+
+        // Hashing of new password
+        // Generating salt
+        let salt = await bcrypt.genSalt(10);
+
+        // Generating hashed password
+        let hashedPassword = await bcrypt.hash(newPassword, salt);
+        let updatedUser = { password: hashedPassword };
+        let user = await User.findByIdAndUpdate(
+          cookie.userId,
+          { $set: updatedUser },
+          { new: true }
+        );
+        res.json({ success: true, user });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: "OTP has expired. Try again with new OTP"
+        });
+      }
+    } catch (err) {
+      // catching the error message if any occurred
+      res.status(400).json({
+        success: false,
+        message: err.message
+      });
+    }
+  }
+);
 
 module.exports = router;
