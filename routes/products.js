@@ -109,8 +109,7 @@ router.post(
               // console.log(file);
               // console.log(response);
               fs.writeFile(
-                `${productsImgPath}${product._id}/view_${i +
-                  1}.jpg`,
+                `${productsImgPath}${product._id}/view_${i + 1}.jpg`,
                 response,
                 "base64",
                 err => {
@@ -127,7 +126,7 @@ router.post(
 
         newArr[i] = `${product._id}/view_${i + 1}.jpg`;
       });
-      
+
       let updatedProduct = { productImages: newArr };
       product = await Product.findByIdAndUpdate(
         product._id,
@@ -167,9 +166,8 @@ Product link: https://www.fetn.live/productDetail?product=${product.id}
 
 Kindly check the current availablility of the product from the site before contacting the seller.
 
-#${product.tags[0]} #${product.tags[1]||''} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
+#${product.tags[0]} #${product.tags[1] || ""} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
   `
-  
         });
       }
 
