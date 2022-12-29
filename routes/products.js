@@ -6,6 +6,11 @@ const User = require("../models/User");
 const fetchUser = require("../middlewares/fetchUser");
 const { body, validationResult } = require("express-validator");
 const productsImgPath = "./Images/products/";
+let imgConvert = require("image-convert");
+
+// Instagram private api
+const { IgApiClient } = require("instagram-private-api");
+const { get } = require("request-promise");
 
 // routes for /products
 // router.get("/", (req, res) => {
@@ -56,7 +61,8 @@ router.post(
         actualPrice: req.body.actualPrice,
         sellingPrice: req.body.sellingPrice,
         discount: Math.round(
-          ((req.body.actualPrice - req.body.sellingPrice) * 100) /
+          (req.body.actualPrice - req.body.sellingPrice) *
+            100 /
             req.body.actualPrice
         ),
         // productImages: req.body.productImages,
@@ -72,35 +78,101 @@ router.post(
 
       let newArr = req.body.productImages;
       newArr.forEach((element, i) => {
-        blob = element.substr(element.indexOf("base64,") + 7);
-
-        const isExists = fs.existsSync(
-          `${productsImgPath}${product._id}`
-        );
+        const isExists = fs.existsSync(`${productsImgPath}${product._id}`);
         // console.log(isExists);
         if (!isExists) {
           fs.mkdirSync(`${productsImgPath}${product._id}`, { recursive: true });
         }
 
-        fs.writeFile(
-          `${productsImgPath}${product._id}/view_${i + 1}.png`,
-          blob,
-          "base64",
-          (err) => {
-            if (err) {
+        // blob = element.substr(element.indexOf("base64,") + 7);
+
+        // fs.writeFile(
+        //   `${productsImgPath}${product._id}/view_${i + 1}.png`,
+        //   blob,
+        //   "base64",
+        //   err => {
+        //     if (err) {
+        //       console.log(err);
+        //     }
+        //   }
+        // );
+
+        imgConvert.fromBuffer(
+          {
+            buffer: element, //replace with buffer
+            quality: 50, //quality
+            output_format: "jpg", //jpg
+            size: "original" //defualt
+          },
+          function(err, response, file) {
+            if (!err) {
+              // console.log(file);
+              // console.log(response);
+              fs.writeFile(
+                `${productsImgPath}${product._id}/view_${i +
+                  1}.jpg`,
+                response,
+                "base64",
+                err => {
+                  if (err) {
+                    console.log(err);
+                  }
+                }
+              );
+            } else {
               console.log(err);
             }
           }
         );
-        newArr[i] = `${product._id}/view_${i + 1}.png`;
-      });
 
+        newArr[i] = `${product._id}/view_${i + 1}.jpg`;
+      });
+      
       let updatedProduct = { productImages: newArr };
       product = await Product.findByIdAndUpdate(
         product._id,
         { $set: updatedProduct },
         { new: true }
       );
+      // return res.json({ success: true, product });
+
+      if (product.availability === "available") {
+        // Posting on instagram
+        const ig = new IgApiClient();
+        ig.state.generateDevice(process.env.INSTAGRAM_USERNAME);
+        await ig.account.login(
+          process.env.INSTAGRAM_USERNAME,
+          process.env.INSTAGRAM_PASS
+        );
+
+        // console.log(
+        //   `http://localhost:5000/Images/products/${product.id}/view_1.jpg`
+        // );
+        const imageBuffer = await get({
+          url: `http://localhost:5000/Images/products/${product.id}/view_1.jpg`,
+          encoding: null
+        });
+
+        await ig.publish.photo({
+          file: imageBuffer,
+          caption: `Product: ${product.name}
+          
+  Description: ${product.description}
+
+  Price: ${product.actualPrice} Rs. only
+
+  Category: ${product.category}
+
+  Product link: https://www.fetn.live/productDetail?product=${product.id}
+
+  Kindly check the current availablility of the product from the site before contacting the seller.
+
+  #${product.tags[0]} #${product.tags[1]||''} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
+  `
+  
+        });
+      }
+
       res.json({ success: true, product });
     } catch (err) {
       // catching the error message if any occurred
@@ -127,17 +199,22 @@ router.delete("/deleteProduct/:id", fetchUser, async (req, res) => {
     }
 
     for (let index = 0; index < 3; index++) {
-      if(fs.existsSync(`${productsImgPath}${productId}/view_${index + 1}.png`)){
-        fs.unlinkSync(`${productsImgPath}${productId}/view_${index + 1}.png`, (err)=>{
-          console.log(err);
-        });
+      if (
+        fs.existsSync(`${productsImgPath}${productId}/view_${index + 1}.jpg`)
+      ) {
+        fs.unlinkSync(
+          `${productsImgPath}${productId}/view_${index + 1}.jpg`,
+          err => {
+            console.log(err);
+          }
+        );
       }
     }
 
-    fs.rmdir(`${productsImgPath}${productId}`, (err)=>{
+    fs.rmdir(`${productsImgPath}${productId}`, err => {
       console.log(err);
     });
-    
+
     product = await Product.findByIdAndDelete(productId);
     res.status(200).json({
       success: true,
@@ -223,19 +300,22 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
     }
 
     let newArr = req.body.productImages;
-    const isExists = fs.existsSync(
-      `${productsImgPath}${product._id}`
-    );
+    const isExists = fs.existsSync(`${productsImgPath}${product._id}`);
 
     if (!isExists) {
       fs.mkdirSync(`${productsImgPath}${product._id}`, { recursive: true });
     }
 
     for (let index = 0; index < 3; index++) {
-      if(fs.existsSync(`${productsImgPath}${product._id}/view_${index + 1}.png`)){
-        fs.unlinkSync(`${productsImgPath}${product._id}/view_${index + 1}.png`, (err)=>{
-          console.log(err);
-        });
+      if (
+        fs.existsSync(`${productsImgPath}${product._id}/view_${index + 1}.jpg`)
+      ) {
+        fs.unlinkSync(
+          `${productsImgPath}${product._id}/view_${index + 1}.jpg`,
+          err => {
+            console.log(err);
+          }
+        );
       }
     }
 
@@ -244,23 +324,24 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
       blob = element.substr(element.indexOf("base64,") + 7);
 
       fs.writeFile(
-        `${productsImgPath}${product._id}/view_${i + 1}.png`,
+        `${productsImgPath}${product._id}/view_${i + 1}.jpg`,
         blob,
         "base64",
-        (err) => {
+        err => {
           if (err) {
             console.log(err);
           }
         }
       );
-      newArr[i] = `${product._id}/view_${i + 1}.png`;
+      newArr[i] = `${product._id}/view_${i + 1}.jpg`;
     });
 
     updatedProduct.productImages = newArr;
     updatedProduct.discount = Math.round(
-          ((updatedProduct.actualPrice - updatedProduct.sellingPrice) * 100) /
-            updatedProduct.actualPrice
-        )
+      (updatedProduct.actualPrice - updatedProduct.sellingPrice) *
+        100 /
+        updatedProduct.actualPrice
+    );
     // Updating the product
     updatedProduct = await Product.findByIdAndUpdate(
       productId,
@@ -466,9 +547,8 @@ router.post(
         };
         message = "Report has been taken down";
         console.log(updatedProduct);
-      }
-      // else include it
-      else {
+      } else {
+        // else include it
         if (Number(product.reportsCount) + 1 > 10) {
           availability = "blacklisted";
         }
@@ -543,9 +623,9 @@ router.post("/searchProducts", async (req, res) => {
   // console.log(queryArr);
   try {
     let products = await Product.find({ availability: "available" });
-    products = products.filter((e) => {
+    products = products.filter(e => {
       matching = 0;
-      queryArr.forEach((q) => {
+      queryArr.forEach(q => {
         if (
           e.name.toLowerCase().includes(q.toLowerCase()) ||
           e.description.toLowerCase().includes(q.toLowerCase()) ||
