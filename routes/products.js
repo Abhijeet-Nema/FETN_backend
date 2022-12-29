@@ -157,17 +157,17 @@ router.post(
           file: imageBuffer,
           caption: `Product: ${product.name}
           
-  Description: ${product.description}
+Description: ${product.description}
 
-  Price: ${product.actualPrice} Rs. only
+Price: ${product.actualPrice} Rs. only
 
-  Category: ${product.category}
+Category: ${product.category}
 
-  Product link: https://www.fetn.live/productDetail?product=${product.id}
+Product link: https://www.fetn.live/productDetail?product=${product.id}
 
-  Kindly check the current availablility of the product from the site before contacting the seller.
+Kindly check the current availablility of the product from the site before contacting the seller.
 
-  #${product.tags[0]} #${product.tags[1]||''} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
+#${product.tags[0]} #${product.tags[1]||''} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
   `
   
         });
