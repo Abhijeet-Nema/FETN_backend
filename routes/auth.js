@@ -99,13 +99,13 @@ router.post(
         fs.mkdirSync(usersImgPath + user._id);
       }
 
-      fs.writeFile(`${usersImgPath}${user._id}/dp..jpg`, blob, "base64", err => {
+      fs.writeFile(`${usersImgPath}${user._id}/dp.png`, blob, "base64", err => {
         if (err) {
           console.log(err);
         }
       });
 
-      let updatedUser = { displayPicture: `${user._id}/dp..jpg` };
+      let updatedUser = { displayPicture: `${user._id}/dp.png` };
       user = await User.findByIdAndUpdate(
         user._id,
         { $set: updatedUser },
@@ -207,9 +207,9 @@ router.delete("/deleteUser", async (req, res) => {
 
     const id = user.id;
 
-    const dpExists = fs.existsSync(`${usersImgPath}${id}/dp..jpg`);
+    const dpExists = fs.existsSync(`${usersImgPath}${id}/dp.png`);
     if (dpExists) {
-      fs.unlinkSync(`${usersImgPath}${id}/dp..jpg`, err => {
+      fs.unlinkSync(`${usersImgPath}${id}/dp.png`, err => {
         console.log(err);
       });
       fs.rmdir(`${usersImgPath}${id}`, err => {
@@ -320,15 +320,15 @@ router.post("/updateUser", fetchUser, async (req, res) => {
       if (!isExists) {
         fs.mkdirSync(usersImgPath + user._id);
       }
-      const dpExists = fs.existsSync(`${usersImgPath}${user._id}/dp..jpg`);
+      const dpExists = fs.existsSync(`${usersImgPath}${user._id}/dp.png`);
       if (dpExists) {
-        fs.unlinkSync(`${usersImgPath}${user._id}/dp..jpg`);
+        fs.unlinkSync(`${usersImgPath}${user._id}/dp.png`);
       }
 
-      // blob = displayPicture.replace(/^data:image\/.jpg;base64,/, "");
+      // blob = displayPicture.replace(/^data:image\/png;base64,/, "");
       blob = displayPicture.substr(displayPicture.indexOf("base64,") + 7);
 
-      fs.writeFile(`${usersImgPath}${user._id}/dp..jpg`, blob, "base64", err => {
+      fs.writeFile(`${usersImgPath}${user._id}/dp.png`, blob, "base64", err => {
         if (err) {
           console.log(err);
         }
