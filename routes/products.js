@@ -9,8 +9,8 @@ const productsImgPath = "./Images/products/";
 let imgConvert = require("image-convert");
 
 // Instagram private api
-const { IgApiClient } = require("instagram-private-api");
-const { get } = require("request-promise");
+// const { IgApiClient } = require("instagram-private-api");
+// const { get } = require("request-promise");
 
 // routes for /products
 // router.get("/", (req, res) => {
@@ -84,47 +84,47 @@ router.post(
           fs.mkdirSync(`${productsImgPath}${product._id}`, { recursive: true });
         }
 
-        // blob = element.substr(element.indexOf("base64,") + 7);
+        blob = element.substr(element.indexOf("base64,") + 7);
 
-        // fs.writeFile(
-        //   `${productsImgPath}${product._id}/view_${i + 1}.png`,
-        //   blob,
-        //   "base64",
-        //   err => {
-        //     if (err) {
-        //       console.log(err);
-        //     }
-        //   }
-        // );
-
-        imgConvert.fromBuffer(
-          {
-            buffer: element, //replace with buffer
-            quality: 50, //quality
-            output_format: "jpg", //jpg
-            size: "original" //defualt
-          },
-          function(err, response, file) {
-            if (!err) {
-              // console.log(file);
-              // console.log(response);
-              fs.writeFile(
-                `${productsImgPath}${product._id}/view_${i + 1}.jpg`,
-                response,
-                "base64",
-                err => {
-                  if (err) {
-                    console.log(err);
-                  }
-                }
-              );
-            } else {
+        fs.writeFile(
+          `${productsImgPath}${product._id}/view_${i + 1}.png`,
+          blob,
+          "base64",
+          err => {
+            if (err) {
               console.log(err);
             }
           }
         );
 
-        newArr[i] = `${product._id}/view_${i + 1}.jpg`;
+        // imgConvert.fromBuffer(
+        //   {
+        //     buffer: element, //replace with buffer
+        //     quality: 70, //quality
+        //     output_format: "png", //png
+        //     size: "original" //defualt
+        //   },
+        //   function(err, response, file) {
+        //     if (!err) {
+        //       // console.log(file);
+        //       // console.log(response);
+        //       fs.writeFile(
+        //         `${productsImgPath}${product._id}/view_${i + 1}.png`,
+        //         response,
+        //         "base64",
+        //         err => {
+        //           if (err) {
+        //             console.log(err);
+        //           }
+        //         }
+        //       );
+        //     } else {
+        //       console.log(err);
+        //     }
+        //   }
+        // );
+
+        newArr[i] = `${product._id}/view_${i + 1}.png`;
       });
 
       let updatedProduct = { productImages: newArr };
@@ -133,49 +133,50 @@ router.post(
         { $set: updatedProduct },
         { new: true }
       );
+
       // return res.json({ success: true, product });
 
-      if (product.availability === "available") {
-        // Posting on instagram
-        const ig = new IgApiClient();
-        try {
-          ig.state.generateDevice(process.env.INSTAGRAM_USERNAME);
-          let loggedInState = await ig.account.login(
-            process.env.INSTAGRAM_USERNAME,
-            process.env.INSTAGRAM_PASS
-          );
+//       if (product.availability === "available") {
+//         // Posting on instagram
+//         const ig = new IgApiClient();
+//         try {
+//           ig.state.generateDevice(process.env.INSTAGRAM_USERNAME);
+//           let loggedInState = await ig.account.login(
+//             process.env.INSTAGRAM_USERNAME,
+//             process.env.INSTAGRAM_PASS
+//           );
 
-          console.log(loggedInState);
-          if (loggedInState) {
-            // console.log(
-            //   `http://localhost:5000/Images/products/${product.id}/view_1.jpg`
-            // );
-            const imageBuffer = await get({
-              url: `http://localhost:5000/Images/products/${product.id}/view_1.jpg`,
-              encoding: null
-            });
+//           console.log(loggedInState);
+//           if (loggedInState) {
+//             // console.log(
+//             //   `http://localhost:5000/Images/products/${product.id}/view_1.jpg`
+//             // );
+//             const imageBuffer = await get({
+//               url: `http://localhost:5000/Images/products/${product.id}/view_1.jpg`,
+//               encoding: null
+//             });
 
-            await ig.publish.photo({
-              file: imageBuffer,
-              caption: `Product: ${product.name}
+//             await ig.publish.photo({
+//               file: imageBuffer,
+//               caption: `Product: ${product.name}
           
-Description: ${product.description}
+// Description: ${product.description}
           
-Category: ${product.category}
+// Category: ${product.category}
           
-Product link: https://www.fetn.live/productDetail?product=${product.id}
+// Product link: https://www.fetn.live/productDetail?product=${product.id}
           
-Kindly check the current availablility of the product from the site before contacting the seller.
+// Kindly check the current availablility of the product from the site before contacting the seller.
           
-#${product.tags[0]} #${product.tags[1] ||
-                ""} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
-          `
-            });
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      }
+// #${product.tags[0]} #${product.tags[1] ||
+//                 ""} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
+//           `
+//             });
+//           }
+//         } catch (error) {
+//           console.log(error);
+//         }
+//       }
 
       res.json({ success: true, product });
     } catch (err) {
@@ -204,10 +205,10 @@ router.delete("/deleteProduct/:id", fetchUser, async (req, res) => {
 
     for (let index = 0; index < 3; index++) {
       if (
-        fs.existsSync(`${productsImgPath}${productId}/view_${index + 1}.jpg`)
+        fs.existsSync(`${productsImgPath}${productId}/view_${index + 1}.png`)
       ) {
         fs.unlinkSync(
-          `${productsImgPath}${productId}/view_${index + 1}.jpg`,
+          `${productsImgPath}${productId}/view_${index + 1}.png`,
           err => {
             console.log(err);
           }
@@ -312,10 +313,10 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
 
     for (let index = 0; index < 3; index++) {
       if (
-        fs.existsSync(`${productsImgPath}${product._id}/view_${index + 1}.jpg`)
+        fs.existsSync(`${productsImgPath}${product._id}/view_${index + 1}.png`)
       ) {
         fs.unlinkSync(
-          `${productsImgPath}${product._id}/view_${index + 1}.jpg`,
+          `${productsImgPath}${product._id}/view_${index + 1}.png`,
           err => {
             console.log(err);
           }
@@ -328,7 +329,7 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
       blob = element.substr(element.indexOf("base64,") + 7);
 
       fs.writeFile(
-        `${productsImgPath}${product._id}/view_${i + 1}.jpg`,
+        `${productsImgPath}${product._id}/view_${i + 1}.png`,
         blob,
         "base64",
         err => {
@@ -337,7 +338,7 @@ router.put("/editProduct/:id", fetchUser, async (req, res) => {
           }
         }
       );
-      newArr[i] = `${product._id}/view_${i + 1}.jpg`;
+      newArr[i] = `${product._id}/view_${i + 1}.png`;
     });
 
     updatedProduct.productImages = newArr;
