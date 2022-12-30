@@ -138,37 +138,43 @@ router.post(
       if (product.availability === "available") {
         // Posting on instagram
         const ig = new IgApiClient();
-        ig.state.generateDevice(process.env.INSTAGRAM_USERNAME);
-        await ig.account.login(
-          process.env.INSTAGRAM_USERNAME,
-          process.env.INSTAGRAM_PASS
-        );
+        try {
+          ig.state.generateDevice(process.env.INSTAGRAM_USERNAME);
+          let loggedInState = await ig.account.login(
+            process.env.INSTAGRAM_USERNAME,
+            process.env.INSTAGRAM_PASS
+          );
 
-        // console.log(
-        //   `http://localhost:5000/Images/products/${product.id}/view_1.jpg`
-        // );
-        const imageBuffer = await get({
-          url: `http://localhost:5000/Images/products/${product.id}/view_1.jpg`,
-          encoding: null
-        });
+          console.log(loggedInState);
+          if (loggedInState) {
+            // console.log(
+            //   `http://localhost:5000/Images/products/${product.id}/view_1.jpg`
+            // );
+            const imageBuffer = await get({
+              url: `http://localhost:5000/Images/products/${product.id}/view_1.jpg`,
+              encoding: null
+            });
 
-        await ig.publish.photo({
-          file: imageBuffer,
-          caption: `Product: ${product.name}
+            await ig.publish.photo({
+              file: imageBuffer,
+              caption: `Product: ${product.name}
           
 Description: ${product.description}
-
-Price: ${product.actualPrice} Rs. only
-
+          
 Category: ${product.category}
-
+          
 Product link: https://www.fetn.live/productDetail?product=${product.id}
-
+          
 Kindly check the current availablility of the product from the site before contacting the seller.
-
-#${product.tags[0]} #${product.tags[1] || ""} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
-  `
-        });
+          
+#${product.tags[0]} #${product.tags[1] ||
+                ""} #fetn #fetnlive #cheaperPrices #makingEducationCheaper
+          `
+            });
+          }
+        } catch (error) {
+          console.log(error);
+        }
       }
 
       res.json({ success: true, product });
@@ -709,5 +715,12 @@ router.post("/getWishlistProducts", fetchUser, async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 });
+
+// Temporary route to delete products
+// router.get('/deleteSelected', async (req, res)=>{
+//   let result = await Product.deleteMany({ seller: "63ab0b3057383620195ce3a8" });
+//   console.log(result);
+//   res.json(result)
+// })
 
 module.exports = router;
