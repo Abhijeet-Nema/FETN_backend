@@ -469,7 +469,7 @@ router.post("/addNotification", fetchUser, async (req, res) => {
       "/" +
       date.getUTCFullYear();
     console.log(date);
-    return;
+    // return;
     let updatedUser = {
       notifications: [
         { time: date, message: notification },
